@@ -4,6 +4,11 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+import mondaySdk from "monday-sdk-js";
+
+const monday = mondaySdk();
+monday.setApiVersion("2023-10");
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
