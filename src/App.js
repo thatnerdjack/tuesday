@@ -2,7 +2,7 @@ import logo from './logo.svg';
 import './App.css';
 import { Stack, Form, Button } from 'react-bootstrap';
 import { readString } from 'react-papaparse';
-import assert from "assert"
+// import assert from "assert"
 
 import mondaySdk from "monday-sdk-js";
 
@@ -16,7 +16,8 @@ const submit = async (e) => {
   let year = e.target[2].value
   let mondayShortName = e.target[3].value
   let slackShortName = e.target[4].value
-  let rosterData = e.target[5].value
+  let evalDueDate = e.target[5].value
+  let rosterData = e.target[6].value
 
   // !!!! CHANGE THESE !!!!
   // Eventually this will be kinda automated but I'm lazy.
@@ -33,9 +34,13 @@ const submit = async (e) => {
   var eventFolderId = -1;
   var boards = [];
   var errors = [];
+  var res = {};
+  var keys = [];
 
   res = await monday.api(`mutation { create_folder (name: \"${mondayShortName}\" , workspace_id: ${workspaceId}, parent_folder_id: ${yearFolderId}) { id }}`)
   eventFolderId = res.data.create_folder.id
+
+  await new Promise(r => setTimeout(r, 10 * 1000));
 
   //chunk and loop logic based on CSV
   var rosterParsed = {};
@@ -210,64 +215,73 @@ const submit = async (e) => {
     }),
   })
 
-  assert(boards.length == 12)
+  // assert(boards.length == 12)
 
-  boards.forEach(async board => {
-    var res = await monday.api(`mutation { 
-                                  create_board (
-                                    board_name: ${board.boardName},
-                                    board_kind: share,
-                                    workspace_id: ${workspaceId},
-                                    folder_id: ${eventFolderId},
-                                    template_id: ${templateId}
-                                  ) {
-                                    id
-                                  }
-                                }`
-                              )
+  for(const board of boards) {
+    res = await monday.api(`mutation { 
+                          create_board (
+                            board_name: \"${board.boardName}\",
+                            board_kind: share,
+                            workspace_id: ${workspaceId},
+                            folder_id: ${eventFolderId},
+                            template_id: ${templateId}
+                          ) {
+                            id
+                          }
+                        }`
+                      )
 
-    if (res.errors.length > 0)
-      res.errors.forEach(err => {
-        errors.push(err);
-      });
+    await new Promise(r => setTimeout(r, 20 * 1000));
+
+    // if(res.errors && res.errors.length > 0)
+    //   res.errors.forEach(err => {
+    //     errors.push(err);
+    //   });
     
-    assert(res.data.create_board.id)
+    // assert(res.data.create_board.id)
     const boardId = res.data.create_board.id
 
-    board.boardRoster.forEach(async vol => {
+    //todo: add people to board and dynamically add them.
+
+    for (const vol of board.boardRoster) {
       var colVals = {
-        
+        "Roles": vol[roleIdx],
+        "Due Date": evalDueDate,
       }
+      console.log(JSON.stringify(colVals))
       res = await monday.api(`mutation { 
                                 create_item (
                                   board_id: ${boardId},
-                                  item_name: \"${board},
-                                  column_values: 
+                                  item_name: \"${board.boardName}\",
+                                  column_values: ${JSON.stringify(JSON.stringify(JSON.stringify(colVals)))}
                                 ) {
                                   id
                                 }
                               }`
                             )
-    });
-  });
 
-  res = await monday.api(`mutation { 
-                            create_board (
-                              board_name: \"my board\",
-                              board_kind: share,
-                              workspace_id: workspaceId,
-                              folder_id: eventFolderId,
-                              template_id: templateId
-                            ) {
-                              id
-                            }
-                          }`
-  )
-  // console.log(res)
+      console.log(res)
 
-  // monday.api('mutation { create_board (board_name: \"my board\", board_kind: shareable, workspace_id: 2348361) {	id}}').then(res => {
-  //   console.log(res)
-  // });
+      // if(res.errors.length > 0)
+      //   res.errors.forEach(err => {
+      //     errors.push(err)
+      //   })
+    }
+    
+    //Add keys to array so we can push slack invites
+    keys.push(board.keyVolSups);
+
+    if(errors.length > 0) {
+      console.error("*******************************")
+      console.error(`ERROR: ${board.boardName} Board`)
+      console.error("*******************************")
+      errors.forEach(err => {
+        console.error(err)
+      });
+
+      errors = [];
+    }
+  }
 }
 
 function App() {
@@ -299,6 +313,11 @@ function App() {
           <Form.Group>
             <Form.Label>Event Short Code for Slack</Form.Label>
             <Form.Control type='text' placeholder='e.g. 2024-inwla' />
+          </Form.Group>
+
+          <Form.Group>
+            <Form.Label>Due Date for Evals</Form.Label>
+            <Form.Control type='date'/>
           </Form.Group>
 
           <Form.Group>
