@@ -9,6 +9,17 @@ import mondaySdk from "monday-sdk-js";
 
 const monday = mondaySdk();
 
+String.prototype.escapeSpecialChars = function() {
+  return this.replace(/\\n/g, "\\n")
+             .replace(/\\'/g, "\\'")
+             .replace(/\\"/g, '\\"')
+             .replace(/\\&/g, "\\&")
+             .replace(/\\r/g, "\\r")
+             .replace(/\\t/g, "\\t")
+             .replace(/\\b/g, "\\b")
+             .replace(/\\f/g, "\\f");
+};
+
 const submit = async (e) => {
   e.preventDefault();
   let mondayToken = e.target[0].value
@@ -248,17 +259,18 @@ const submit = async (e) => {
         "Roles": vol[roleIdx],
         "Due Date": evalDueDate,
       }
-      console.log(JSON.stringify(colVals))
-      res = await monday.api(`mutation { 
-                                create_item (
-                                  board_id: ${boardId},
-                                  item_name: \"${board.boardName}\",
-                                  column_values: ${JSON.stringify(JSON.stringify(JSON.stringify(colVals)))}
-                                ) {
-                                  id
-                                }
-                              }`
-                            )
+
+      var query = `mutation { 
+        create_item (
+          board_id: ${boardId},
+          item_name: \"${vol[firstNameIdx]} ${vol[lastNameIdx]} - ${vol[roleIdx]}\",
+          column_values: ${JSON.stringify(JSON.stringify(colVals))}
+        ) {
+          id
+        }
+      }`
+      console.log(query)
+      res = await monday.api(query)
 
       console.log(res)
 
