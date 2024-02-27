@@ -1,302 +1,343 @@
 import logo from './logo.svg';
 import './App.css';
-import { Stack, Form, Button } from 'react-bootstrap';
+import { Stack, Form, Button, ProgressBar } from 'react-bootstrap';
 import { readString } from 'react-papaparse';
 // import assert from "assert"
 
 import mondaySdk from "monday-sdk-js";
+import { useState } from 'react';
 
 
 const monday = mondaySdk();
 
-String.prototype.escapeSpecialChars = function() {
+String.prototype.escapeSpecialChars = function () {
   return this.replace(/\\n/g, "\\n")
-             .replace(/\\'/g, "\\'")
-             .replace(/\\"/g, '\\"')
-             .replace(/\\&/g, "\\&")
-             .replace(/\\r/g, "\\r")
-             .replace(/\\t/g, "\\t")
-             .replace(/\\b/g, "\\b")
-             .replace(/\\f/g, "\\f");
+    .replace(/\\'/g, "\\'")
+    .replace(/\\"/g, '\\"')
+    .replace(/\\&/g, "\\&")
+    .replace(/\\r/g, "\\r")
+    .replace(/\\t/g, "\\t")
+    .replace(/\\b/g, "\\b")
+    .replace(/\\f/g, "\\f");
 };
 
-const submit = async (e) => {
-  e.preventDefault();
-  let mondayToken = e.target[0].value
-  let slackKey = e.target[1].value
-  let year = e.target[2].value
-  let mondayShortName = e.target[3].value
-  let slackShortName = e.target[4].value
-  let evalDueDate = e.target[5].value
-  let rosterData = e.target[6].value
+function App() {
+  const [keysTextField, setkeysTextField] = useState("Waiting...");
+  const [keysTextFieldEnabled, setKeysTextFieldEnabled] = useState(true);
+  const [progressBar, setProgressBar] = useState(0);
 
-  // !!!! CHANGE THESE !!!!
-  // Eventually this will be kinda automated but I'm lazy.
-  let workspaceId = "2348361"
-  let yearFolderId = "13255619"
-  let templateId = "4052932901"
-  let firstNameIdx = 0;
-  let lastNameIdx = 1;
-  let emailIdx = 2;
-  let roleIdx = 3;
+  const submit = async (e) => {
+    e.preventDefault();
 
-  monday.setToken(mondayToken)
+    setProgressBar(1);
 
-  var eventFolderId = -1;
-  var boards = [];
-  var errors = [];
-  var res = {};
-  var keys = [];
+    let mondayToken = e.target[0].value
+    let slackKey = e.target[1].value
+    let year = e.target[2].value
+    let mondayShortName = e.target[3].value
+    let slackShortName = e.target[4].value
+    let evalDueDate = e.target[5].value
+    let rosterData = e.target[6].value
 
-  res = await monday.api(`mutation { create_folder (name: \"${mondayShortName}\" , workspace_id: ${workspaceId}, parent_folder_id: ${yearFolderId}) { id }}`)
-  eventFolderId = res.data.create_folder.id
+    // !!!! CHANGE THESE !!!!
+    // Eventually this will be kinda automated but I'm lazy.
+    let workspaceId = "2348361"
+    let yearFolderId = "13255619"
+    let templateId = "4052932901"
+    let firstNameIdx = 0;
+    let lastNameIdx = 1;
+    let emailIdx = 2;
+    let roleIdx = 3;
 
-  await new Promise(r => setTimeout(r, 10 * 1000));
+    monday.setToken(mondayToken)
 
-  //chunk and loop logic based on CSV
-  var rosterParsed = {};
-  readString(rosterData, {
-    complete: (result) => {
-      rosterParsed = result.data
-    }
-  })
+    var eventFolderId = -1;
+    var boards = [];
+    var errors = [];
+    var res = {};
+    var keys = [];
 
-  //VC Reports
-  boards.push({
-    board: "vc",
-    boardName: `VC Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "Volunteer Coordinator"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Practice Field Attendant" ||
-        el[roleIdx] == "Welcome Table" ||
-        el[roleIdx] == "Volunteer Check-in" ||
-        el[roleIdx] == "Quiet Room Attendant"
-    }),
-  })
+    res = await monday.api(`mutation { create_folder (name: \"${mondayShortName}\" , workspace_id: ${workspaceId}, parent_folder_id: ${yearFolderId}) { id }}`)
+    eventFolderId = res.data.create_folder.id
 
-  //Head Ref Reports
-  boards.push({
-    board: "hr",
-    boardName: `Head Ref Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "Head Referee"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Referee" ||
-        el[roleIdx] == "Offical Scorer"
-    }),
-  })
+    await new Promise(r => setTimeout(r, 10 * 1000));
 
-  //FTA Reports
-  boards.push({
-    board: "fta",
-    boardName: `FTA Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "FIRST Technical Advisor"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Field Supervisor" ||
-        el[roleIdx] == "Scorekeeper" ||
-        el[roleIdx] == "FIRST Technical Advisor Assistant" ||
-        el[roleIdx] == "Control System Advisor" ||
-        el[roleIdx] == "Lead Queuer"
-    }),
-  })
+    //chunk and loop logic based on CSV
+    var rosterParsed = {};
+    readString(rosterData, {
+      complete: (result) => {
+        rosterParsed = result.data
+      }
+    })
 
-  //Field Supervisor Reports
-  boards.push({
-    board: "fieldSup",
-    boardName: `Field Sup Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "Field Supervisor"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Field Resetter"
-    }),
-  })
+    //VC Reports
+    boards.push({
+      board: "vc",
+      boardName: `VC Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "Volunteer Coordinator"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Practice Field Attendant" ||
+          el[roleIdx] == "Welcome Table" ||
+          el[roleIdx] == "Volunteer Check-in" ||
+          el[roleIdx] == "Quiet Room Attendant"
+      }),
+    })
 
-  //Lead Que Reports
-  boards.push({
-    board: "leadQue",
-    boardName: `Lead Que Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "Lead Queuer"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Queuer"
-    }),
-  })
+    //Head Ref Reports
+    boards.push({
+      board: "hr",
+      boardName: `Head Ref Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "Head Referee"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Referee" ||
+          el[roleIdx] == "Offical Scorer"
+      }),
+    })
 
-  //AV Director Reports
-  boards.push({
-    board: "av",
-    boardName: `AV Director Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "AV Director"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Assistant AV Director" ||
-        el[roleIdx] == "Audio/Visual Attendant" ||
-        el[roleIdx] == "Event Photographer" ||
-        el[roleIdx] == "Emcee" ||
-        el[roleIdx] == "Game Announcer"
-    }),
-  })
+    //FTA Reports
+    boards.push({
+      board: "fta",
+      boardName: `FTA Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "FIRST Technical Advisor"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Field Supervisor" ||
+          el[roleIdx] == "Scorekeeper" ||
+          el[roleIdx] == "FIRST Technical Advisor Assistant" ||
+          el[roleIdx] == "Control System Advisor" ||
+          el[roleIdx] == "Lead Queuer"
+      }),
+    })
 
-  //Judge Advisor Reports
-  boards.push({
-    board: "ja",
-    boardName: `JA Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "Judge Advisor"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Judge" ||
-        el[roleIdx] == "Judge - Dean's List Award" ||
-        el[roleIdx] == "Judge - FIRST Impact Award" ||
-        el[roleIdx] == "Judge Advisor Assistant"
-    }),
-  })
+    //Field Supervisor Reports
+    boards.push({
+      board: "fieldSup",
+      boardName: `Field Sup Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "Field Supervisor"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Field Resetter"
+      }),
+    })
 
-  //LRI Reports
-  boards.push({
-    board: "lri",
-    boardName: `LRI Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "Lead Robot Inspector"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Robot Inspector" ||
-        el[roleIdx] == "Inspection Manager"
-    }),
-  })
+    //Lead Que Reports
+    boards.push({
+      board: "leadQue",
+      boardName: `Lead Que Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "Lead Queuer"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Queuer"
+      }),
+    })
 
-  //Event Manager Reports
-  boards.push({
-    board: "em",
-    boardName: `EM Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "Event Manager"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Pit Administration Supervisor" ||
-        el[roleIdx] == "Emcee Assistant" ||
-        el[roleIdx] == "Safety Manager"
-    }),
-  })
+    //AV Director Reports
+    boards.push({
+      board: "av",
+      boardName: `AV Director Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "AV Director"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Assistant AV Director" ||
+          el[roleIdx] == "Audio/Visual Attendant" ||
+          el[roleIdx] == "Event Photographer" ||
+          el[roleIdx] == "Emcee" ||
+          el[roleIdx] == "Game Announcer"
+      }),
+    })
 
-  //Safety Manager Reports
-  boards.push({
-    board: "safety",
-    boardName: `Safety Manager Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "Safety Manager"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Safety Attendant"
-    }),
-  })
+    //Judge Advisor Reports
+    boards.push({
+      board: "ja",
+      boardName: `JA Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "Judge Advisor"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Judge" ||
+          el[roleIdx] == "Judge - Dean's List Award" ||
+          el[roleIdx] == "Judge - FIRST Impact Award" ||
+          el[roleIdx] == "Judge Advisor Assistant"
+      }),
+    })
 
-  //Pit Admin Reports
-  boards.push({
-    board: "pit",
-    boardName: `Pit Admin Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "Pit Administration Supervisor"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Pit Administrator" ||
-        el[roleIdx] == "Spare Parts Attendant" ||
-        el[roleIdx] == "Machine Shop Coordinator"
-    }),
-  })
+    //LRI Reports
+    boards.push({
+      board: "lri",
+      boardName: `LRI Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "Lead Robot Inspector"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Robot Inspector" ||
+          el[roleIdx] == "Inspection Manager"
+      }),
+    })
 
-  //Machine Shop Sup Reports
-  boards.push({
-    board: "shop",
-    boardName: `Machine Shop Reports - ${mondayShortName}`,
-    keyVolSups: rosterParsed.filter(el => {
-      return el[roleIdx] == "Machine Shop Coordinator"
-    }),
-    boardRoster: rosterParsed.filter(el => {
-      return el[roleIdx] == "Machine Shop Runner" ||
-        el[roleIdx] == "Machine Shop Staff"
-    }),
-  })
+    //Event Manager Reports
+    boards.push({
+      board: "em",
+      boardName: `EM Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "Event Manager"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Pit Administration Supervisor" ||
+          el[roleIdx] == "Emcee Assistant" ||
+          el[roleIdx] == "Safety Manager"
+      }),
+    })
 
-  // assert(boards.length == 12)
+    //Safety Manager Reports
+    boards.push({
+      board: "safety",
+      boardName: `Safety Manager Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "Safety Manager"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Safety Attendant"
+      }),
+    })
 
-  for(const board of boards) {
-    res = await monday.api(`mutation { 
-                          create_board (
-                            board_name: \"${board.boardName}\",
-                            board_kind: share,
-                            workspace_id: ${workspaceId},
-                            folder_id: ${eventFolderId},
-                            template_id: ${templateId}
-                          ) {
-                            id
-                          }
-                        }`
-                      )
+    //Pit Admin Reports
+    boards.push({
+      board: "pit",
+      boardName: `Pit Admin Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "Pit Administration Supervisor"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Pit Administrator" ||
+          el[roleIdx] == "Spare Parts Attendant" ||
+          el[roleIdx] == "Machine Shop Coordinator"
+      }),
+    })
 
-    await new Promise(r => setTimeout(r, 20 * 1000));
+    //Machine Shop Sup Reports
+    boards.push({
+      board: "shop",
+      boardName: `Machine Shop Reports - ${mondayShortName}`,
+      keyVolSups: rosterParsed.filter(el => {
+        return el[roleIdx] == "Machine Shop Coordinator"
+      }),
+      boardRoster: rosterParsed.filter(el => {
+        return el[roleIdx] == "Machine Shop Runner" ||
+          el[roleIdx] == "Machine Shop Staff"
+      }),
+    })
 
-    // if(res.errors && res.errors.length > 0)
-    //   res.errors.forEach(err => {
-    //     errors.push(err);
-    //   });
-    
-    // assert(res.data.create_board.id)
-    const boardId = res.data.create_board.id
+    // assert(boards.length == 12)
 
-    //todo: add people to board and dynamically add them.
+    for (const board of boards) {
+      res = await monday.api(`mutation { 
+                            create_board (
+                              board_name: \"${board.boardName}\",
+                              board_kind: share,
+                              workspace_id: ${workspaceId},
+                              folder_id: ${eventFolderId},
+                              template_id: ${templateId}
+                            ) {
+                              id
+                            }
+                          }`
+      )
 
-    for (const vol of board.boardRoster) {
-      var colVals = {
-        "Roles": vol[roleIdx],
-        "Due Date": evalDueDate,
+      await new Promise(r => setTimeout(r, 30 * 1000));
+
+      if (res.errors) {
+        console.log("ugh")
+        console.log(res.errors)
       }
 
-      var query = `mutation { 
-        create_item (
-          board_id: ${boardId},
-          item_name: \"${vol[firstNameIdx]} ${vol[lastNameIdx]} - ${vol[roleIdx]}\",
-          column_values: ${JSON.stringify(JSON.stringify(colVals))}
-        ) {
-          id
-        }
-      }`
-      console.log(query)
-      res = await monday.api(query)
-
-      console.log(res)
-
-      // if(res.errors.length > 0)
+      // if(res.errors && res.errors.length > 0)
       //   res.errors.forEach(err => {
-      //     errors.push(err)
-      //   })
-    }
-    
-    //Add keys to array so we can push slack invites
-    keys.push(board.keyVolSups);
+      //     errors.push(err);
+      //   });
 
-    if(errors.length > 0) {
-      console.error("*******************************")
-      console.error(`ERROR: ${board.boardName} Board`)
-      console.error("*******************************")
-      errors.forEach(err => {
-        console.error(err)
-      });
+      // assert(res.data.create_board.id)
+      const boardId = res.data.create_board.id
 
-      errors = [];
+      //todo: add people to board and dynamically add them.
+
+      for (const vol of board.boardRoster) {
+        var colVals = {
+          "dropdown": vol[roleIdx],
+          "date": evalDueDate,
+          // "person": board.keyVolSups[emailIdx],
+        }
+
+        /* Long Name Correction */
+        if (colVals.dropdown == "FIRST Technical Advisor Assistant")
+          colVals.dropdown = "FTAA"
+        else if (colVals.dropdown == "Control System Advisor")
+          colVals.dropdown = "CSA"
+
+        var query = `mutation { 
+          create_item (
+            board_id: ${boardId},
+            item_name: \"${vol[firstNameIdx]} ${vol[lastNameIdx]} - ${vol[roleIdx]}\",
+            column_values: ${JSON.stringify(JSON.stringify(colVals))}
+          ) {
+            id
+          }
+        }`
+
+        res = await monday.api(query)
+
+        console.log(res)
+
+        if (res.errors) {
+          console.log("ugh ugh")
+          console.log(res.errors)
+        }
+
+        // var query4 = `query {
+        //   boards (ids: ${boardId}) {
+        //     columns {
+        //       id
+        //       title
+        //     }		
+        //   }
+        // }`
+
+        // res = await monday.api(query4);
+        // console.log(res)
+        // return;
+      }
+
+      //Add keys to array so we can push slack invites
+      keys.push(board.keyVolSups);
+
+      if (errors.length > 0) {
+        console.error("*******************************")
+        console.error(`ERROR: ${board.boardName} Board`)
+        console.error("*******************************")
+        errors.forEach(err => {
+          console.error(err)
+        });
+
+        errors = [];
+      }
+
+      setProgressBar(progressBar + 8);
     }
+
+    setProgressBar(100);
+    setkeysTextField(keys);
+    setKeysTextFieldEnabled(true);
+    await new Promise(r => setTimeout(r, 1 * 1000));
+    setProgressBar(1);
   }
-}
 
-function App() {
   return (
     <>
       <Stack gap={3}>
@@ -329,7 +370,7 @@ function App() {
 
           <Form.Group>
             <Form.Label>Due Date for Evals</Form.Label>
-            <Form.Control type='date'/>
+            <Form.Control type='date' />
           </Form.Group>
 
           <Form.Group>
@@ -337,10 +378,14 @@ function App() {
             <Form.Control as="textarea" rows={3} />
           </Form.Group>
 
-          <Button variant="primary" type="submit">
+          <Button disabled={(progressBar > 0)} variant="primary" type="submit">
             Submit
           </Button>
         </Form>
+
+        <ProgressBar now={progressBar} label={`${progressBar}%`} animated />
+
+        <textarea disabled={keysTextFieldEnabled}>{keysTextField}</textarea>
       </Stack>
     </>
   );
