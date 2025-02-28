@@ -143,14 +143,16 @@ function App() {
       board: "av",
       boardName: `AV Director Reports - ${mondayShortName}`,
       keyVolSups: rosterParsed.filter(el => {
-        return el[roleIdx] == "AV Director"
+        return el[roleIdx] == "AV Director" || el[roleIdx] == "Production Director"
       }),
       boardRoster: rosterParsed.filter(el => {
         return el[roleIdx] == "Assistant AV Director" ||
           el[roleIdx] == "Audio/Visual Attendant" ||
           el[roleIdx] == "Event Photographer" ||
           el[roleIdx] == "Emcee" ||
-          el[roleIdx] == "Game Announcer"
+          el[roleIdx] == "Game Announcer" ||
+          el[roleIdx] == "Analyst Desk" ||
+          el[roleIdx] == "Camera Operator"
       }),
     })
 
